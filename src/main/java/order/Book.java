@@ -101,7 +101,6 @@ public final class Book {
 	}
 
 	private void placeBuy(long price, long quant, long ident) {
-		price &= 1023;
 		if (buyTree == null) {
 			buyTree = BuyNode.newInstance(price, quant, ident);
 		} else {
