@@ -18,6 +18,11 @@ public final class Book {
 	/** The number of bytes in an order packet is fixed. */
 	public static final int PACKET_SIZE = 32;
 
+	/** First packet word flags place with 1 and cancel with 0. */
+	public static final long PLACE_NOT_CANCEL_FLAG = 1L << 60;
+	/** First packet word flags buy with 1 and sell with 0. */
+	public static final long BUY_NOT_SELL_FLAG     = 1L << 61;
+
 	/** Packet streams are read with this buffer size. */
 	public static final int READ_SIZE = 4096;
 
@@ -31,8 +36,14 @@ public final class Book {
 	private final byte[] buf = new byte[READ_SIZE];
 	private int bufN = 0; // pending byte count
 
-	/** Total number of order placements applied. */
+	/** Total number of placements applied. */
 	public long buyPlaceCount = 0;
+	/** Total number of cancels applied. */
+	public long buyCancelCount = 0;
+	/** Total number of placements applied. */
+	public long sellPlaceCount = 0;
+	/** Total number of cancels applied. */
+	public long sellCancelCount = 0;
 
 	// https://mishadoff.com/blog/java-magic-part-4-sun-dot-misc-dot-unsafe/
 	private static final Unsafe unsafe;
@@ -73,8 +84,8 @@ public final class Book {
 			long quantity = unsafe.getLong(buf, baseAddr + i + 16);
 			long price    = unsafe.getLong(buf, baseAddr + i + 24);
 
-			boolean placeNotCancel = (header & 1L<<63) != 0;
-			boolean buyNotSell     = (header & 1L<<62) != 0;
+			boolean placeNotCancel = (header & PLACE_NOT_CANCEL_FLAG) != 0;
+			boolean buyNotSell     = (header & BUY_NOT_SELL_FLAG) != 0;
 			if (placeNotCancel && buyNotSell) placeBuy(price, quantity, orderID);
 			if (placeNotCancel && !buyNotSell) placeSell(price, quantity, orderID);
 			if (!placeNotCancel && buyNotSell) cancelBuy(price, quantity, orderID);
@@ -90,8 +101,6 @@ public final class Book {
 	}
 
 	private void placeBuy(long price, long quant, long ident) {
-		buyPlaceCount++;
-
 		price &= 1023;
 		if (buyTree == null) {
 			buyTree = BuyNode.newInstance(price, quant, ident);
@@ -101,6 +110,8 @@ public final class Book {
 			while (buyTree.above != null)
 				buyTree = buyTree.above;
 		}
+
+		buyPlaceCount++; // metric
 	}
 
 	private void placeSell(long price, long quant, long ident) {
