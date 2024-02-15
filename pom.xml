@@ -47,7 +47,9 @@
 	<artifactId>maven-surefire-plugin</artifactId>
 	<version>3.2.5</version>
 	<configuration>
-		<enableAssertions>true</enableAssertions>
+		<!-- Disabled for the benchmarks. Benchmarks need a
+		     separate module in later stage of development. -->
+		<enableAssertions>false</enableAssertions>
 	</configuration>
 </plugin>
 </plugins>
