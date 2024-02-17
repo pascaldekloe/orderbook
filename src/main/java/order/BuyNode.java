@@ -251,7 +251,7 @@ final class BuyNode {
 			split.below[0] = left;
 			split.below[0].above = split;
 			split.below[1] = right;
-			split.below[0].above = split;
+			split.below[1].above = split;
 			size = 1;
 			below[2] = null; // free (L); in split now
 			pushUp(payload[PRICE_POS + ORDER_LEN],
