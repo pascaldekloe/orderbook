@@ -26,13 +26,13 @@ public class NodeTest {
 		assertEquals("top node after third place", "@1/1:[ 105 999 41 ]", n.toString());
 		assertNull("above top node after third place", n.above);
 
-		assertNotNull("left node below", n.below[0]);
-		assertEquals("left node below", "@0/1:[ 99 1000 42 ]", n.below[0].toString());
-		assertSame("above left node below", n.below[0].above, n);
+		assertNotNull("left node below", n.below0);
+		assertEquals("left node below", "@0/1:[ 99 1000 42 ]", n.below0.toString());
+		assertSame("above left node below", n.below0.above, n);
 
-		assertNotNull("right node below", n.below[1]);
-		assertEquals("right node below", "@0/1:[ 115 99 40 ]", n.below[1].toString());
-		assertSame("above right node below", n.below[1].above, n);
+		assertNotNull("right node below", n.below1);
+		assertEquals("right node below", "@0/1:[ 115 99 40 ]", n.below1.toString());
+		assertSame("above right node below", n.below1.above, n);
 	}
 
 	/** Insert lower prices until node split. */
@@ -53,13 +53,13 @@ public class NodeTest {
 		assertEquals("top node after thrird place", "@1/1:[ 98 1001 43 ]", n.toString());
 		assertNull("above top node after third place", n.above);
 
-		assertNotNull("left node below", n.below[0]);
-		assertEquals("left node below", "@0/1:[ 97 1002 44 ]", n.below[0].toString());
-		assertSame("above left node below", n.below[0].above, n);
+		assertNotNull("left node below", n.below0);
+		assertEquals("left node below", "@0/1:[ 97 1002 44 ]", n.below0.toString());
+		assertSame("above left node below", n.below0.above, n);
 
-		assertNotNull("right node below", n.below[1]);
-		assertEquals("right node below", "@0/1:[ 99 1000 42 ]", n.below[1].toString());
-		assertSame("above right node below", n.below[1].above, n);
+		assertNotNull("right node below", n.below1);
+		assertEquals("right node below", "@0/1:[ 99 1000 42 ]", n.below1.toString());
+		assertSame("above right node below", n.below1.above, n);
 	}
 
 	/** Insert same price until node split. */
@@ -80,13 +80,13 @@ public class NodeTest {
 		assertEquals("top node after third place", "@1/1:[ 99 1000 41 ]", n.toString());
 		assertNull("above top node after third place", n.above);
 
-		assertNotNull("left node below", n.below[0]);
-		assertEquals("left node below", "@0/1:[ 99 1000 42 ]", n.below[0].toString());
-		assertSame("above left node below", n.below[0].above, n);
+		assertNotNull("left node below", n.below0);
+		assertEquals("left node below", "@0/1:[ 99 1000 42 ]", n.below0.toString());
+		assertSame("above left node below", n.below0.above, n);
 
-		assertNotNull("right node below", n.below[1]);
-		assertEquals("right node below", "@0/1:[ 99 1000 40 ]", n.below[1].toString());
-		assertSame("above right node below", n.below[1].above, n);
+		assertNotNull("right node below", n.below1);
+		assertEquals("right node below", "@0/1:[ 99 1000 40 ]", n.below1.toString());
+		assertSame("above right node below", n.below1.above, n);
 	}
 
 }

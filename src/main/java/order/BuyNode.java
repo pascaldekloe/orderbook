@@ -28,9 +28,8 @@ final class BuyNode {
 	 * Only the first {@link #size} + 1 nodes are in use. The bottom row of
 	 * nodes in a B-Tree all have {@code null} values exclusively, and vise
 	 * versa.
-	 * TODO: Do 3 pointer fields save memory (without Java's array header)?
 	 */
-        final BuyNode[] below = new BuyNode[3];
+	BuyNode below0, below1, below2;
 
 	/**
 	 * The actual number of orders in a BuyNode is either 1 or 2.
@@ -43,7 +42,7 @@ final class BuyNode {
 	 * as [ price quantity order_ID ] tuples to offload garbage collection.
 	 * TODO: Do 6 long fields save memory (without Java's array header)?
 	 */
-        final long[] payload = new long[(below.length - 1) * ORDER_LEN];
+        final long[] payload = new long[2 * ORDER_LEN];
 
 	// field indices in payload array
 	private static final int PRICE_POS = 0;
@@ -67,7 +66,7 @@ final class BuyNode {
 	@Override
 	public String toString() {
 		int level = 0; // floor
-		for (BuyNode n = below[0]; n != null; n = n.below[0])
+		for (BuyNode n = below0; n != null; n = n.below0)
 			level++;
 		int levelMax = level;
 		for (BuyNode n = above; n != null; n = n.above)
@@ -111,8 +110,8 @@ final class BuyNode {
 		while (true) {
 			if (n.size == 1) {
 				if (price >= n.payload[PRICE_POS]) {
-					if (n.below[1] != null) {
-						n = n.below[1];
+					if (n.below1 != null) {
+						n = n.below1;
 						continue;
 					} else { // at bottom level
 						n.payload[PRICE_POS + ORDER_LEN] = price;
@@ -121,8 +120,8 @@ final class BuyNode {
 						n.size = 2;
 					}
 				} else {
-					if (n.below[0] != null) {
-						n = n.below[0];
+					if (n.below0 != null) {
+						n = n.below0;
 						continue;
 					} else { // at bottom level
 						n.payload[PRICE_POS + ORDER_LEN] = n.payload[PRICE_POS];
@@ -139,8 +138,8 @@ final class BuyNode {
 			assert(n.size == 2);
 
 			if (price >= n.payload[PRICE_POS + ORDER_LEN]) {
-				if (n.below[2] != null) {
-					n = n.below[2];
+				if (n.below2 != null) {
+					n = n.below2;
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(price, quant, ident);
@@ -151,8 +150,8 @@ final class BuyNode {
 						right);
 				}
 			} else if (price >= n.payload[PRICE_POS]) {
-				if (n.below[1] != null) {
-					n = n.below[1];
+				if (n.below1 != null) {
+					n = n.below1;
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(
@@ -164,8 +163,8 @@ final class BuyNode {
 				}
 			} else {
 				assert(price < n.payload[PRICE_POS]);
-				if (n.below[0] != null) {
-					n = n.below[0];
+				if (n.below0 != null) {
+					n = n.below0;
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(
@@ -198,8 +197,8 @@ final class BuyNode {
 		}
 
 		BuyNode top = BuyNode.newInstance(price, quant, ident);
-		top.below[0] = this;
-		top.below[1] = right;
+		top.below0 = this;
+		top.below1 = right;
 		this.above = top;
 		right.above = top;
 	}
@@ -211,36 +210,36 @@ final class BuyNode {
 	 * @param right the new node to place (right of {@code left}).
 	 */
 	private void push(long price, long quant, long ident, BuyNode left, BuyNode right) {
-		assert(Arrays.asList(below).subList(0, size+1).contains(left));
-		assert(!Arrays.asList(below).subList(0, size+1).contains(right));
+		assert(left == below0 || left == below1 || (size > 1 && left == below2));
+		assert(right != below0 && right != below1 && right != below2);
 		assert(left.above == this);
 
 		if (size == 1) {
 			size = 2; // grow
 
-			if (left == below[1]) {
+			if (left == below1) {
 				// push (L)eft, (R)ight and new (C)enter:
 				//
 				//   (A)          (T) (C)
 				//   / \    👉    / \ / \
 				// (B) (L)      (B) (L) (R)
 
-				below[2] = right;
-				below[2].above = this;
+				below2 = right;
+				below2.above = this;
 				payload[PRICE_POS + ORDER_LEN] = price;
 				payload[QUANT_POS + ORDER_LEN] = quant;
 				payload[IDENT_POS + ORDER_LEN] = ident;
 			} else {
-				assert(left == below[0]);
+				assert(left == below0);
 				// push (L)eft, (R)ight and new (C)enter:
 				//
 				//   (A)          (C) (A)
 				//   / \    👉    / \ / \
 				// (L) (B)      (L) (R) (B)
 
-				below[2] = below[1];
-				below[1] = right;
-				below[1].above = this;
+				below2 = below1;
+				below1 = right;
+				below1.above = this;
 				payload[PRICE_POS + ORDER_LEN] = payload[PRICE_POS];
 				payload[QUANT_POS + ORDER_LEN] = payload[QUANT_POS];
 				payload[IDENT_POS + ORDER_LEN] = payload[IDENT_POS];
@@ -254,7 +253,7 @@ final class BuyNode {
 		assert(size == 2);
 
 		// split up
-		if (left == below[2]) {
+		if (left == below2) {
 			// push (L)eft, (R)ight and new (C)enter:
 			//                               (A2)
 			//    (A1)  (A2)           (A1)   🔝   (C)
@@ -262,12 +261,12 @@ final class BuyNode {
 			// (B1)  (B2)  (L)      (B1)  (B2)   (L) (R)
 
 			BuyNode split = BuyNode.newInstance(price, quant, ident);
-			split.below[0] = left;
-			split.below[0].above = split;
-			split.below[1] = right;
-			split.below[1].above = split;
+			split.below0 = left;
+			split.below0.above = split;
+			split.below1 = right;
+			split.below1.above = split;
 			size = 1;
-			below[2] = null; // free (L); in split now
+			below2 = null; // free (L); in split now
 			pushUp(payload[PRICE_POS + ORDER_LEN],
 				payload[QUANT_POS + ORDER_LEN],
 				payload[IDENT_POS + ORDER_LEN],
@@ -280,34 +279,34 @@ final class BuyNode {
 			payload[PRICE_POS + ORDER_LEN],
 			payload[QUANT_POS + ORDER_LEN],
 			payload[IDENT_POS + ORDER_LEN]);
-		if (left == below[1]) {
+		if (left == below1) {
 			// push (L)eft, (R)ight and new (C)enter:
 			//                               (C)
 			//    (A1) (A2)            (A1)   🔝   (A2)
 			//    /  \ /  \     👉     /  \        /  \
 			// (B1)  (L)  (B2)      (B1)  (L)    (R)  (B2)
-			split.below[0] = right;
-			split.below[0].above = split;
-			split.below[1] = below[2];
-			split.below[1].above = split;
+			split.below0 = right;
+			split.below0.above = split;
+			split.below1 = below2;
+			split.below1.above = split;
 			size = 1;
-			below[2] = null; // free (B2); in split now
+			below2 = null; // free (B2); in split now
 			pushUp(price, quant, ident, split);
 		} else {
-			assert(left == below[0]);
+			assert(left == below0);
 			// push (L)eft, (R)ight and new (C)enter:
 			//                              (A1)
 			//   (A1)  (A2)            (C)   🔝   (A2)
 			//   /  \  /  \     👉     / \        /  \
 			// (L)  (B1)  (B2)      (L)  (R)   (B1)   (B2)
-			split.below[0] = below[1];
-			split.below[0].above = split;
-			split.below[1] = below[2];
-			split.below[1].above = split;
+			split.below0 = below1;
+			split.below0.above = split;
+			split.below1 = below2;
+			split.below1.above = split;
 			size = 1;
-			below[2] = null; // free (B2); in split now
-			below[1] = right;
-			below[1].above = this;
+			below2 = null; // free (B2); in split now
+			below1 = right;
+			below1.above = this;
 			pushUp(payload[PRICE_POS],
 				payload[QUANT_POS],
 				payload[IDENT_POS],

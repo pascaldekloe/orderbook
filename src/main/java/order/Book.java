@@ -128,14 +128,17 @@ public final class Book {
 
 		StringBuilder b = new StringBuilder(buyTree.toString()).append('\n');
 		List<BuyNode> row = Arrays.asList(buyTree);
-		while (row.get(0).below[0] != null) {
+		while (row.get(0).below0 != null) {
 			List<BuyNode> nextRow = new ArrayList(row.size() * 2);
 			for (BuyNode node : row) {
 				b.append("=======================================================================\n");
-				for (int i = 0; i <= node.size; i++) {
-					BuyNode sub = node.below[i];
-					nextRow.add(sub);
-					b.append(sub.toString()).append('\n');
+				nextRow.add(node.below0);
+				b.append(node.below0.toString()).append('\n');
+				nextRow.add(node.below1);
+				b.append(node.below1.toString()).append('\n');
+				if (node.size > 1) {
+					nextRow.add(node.below2);
+					b.append(node.below2.toString()).append('\n');
 				}
 			}
 			row = nextRow;
