@@ -93,77 +93,82 @@ final class BuyNode {
 	 * @param quant order volume.
 	 * @param ident order reference.
 	 */
-	public void placeOrder(long price, long quant, long ident) {
-		// TODO: loop instead of recursive method calls.
+	public static void placeOrder(BuyNode n, long price, long quant, long ident) {
+		while (true) {
+			if (n.size == 1) {
+				if (price >= n.payload[PRICE_POS]) {
+					if (n.below[1] != null) {
+						n = n.below[1];
+						continue;
+					} else { // at bottom level
+						n.payload[PRICE_POS + ORDER_LEN] = price;
+						n.payload[QUANT_POS + ORDER_LEN] = quant;
+						n.payload[IDENT_POS + ORDER_LEN] = ident;
+						n.size = 2;
+					}
+				} else {
+					if (n.below[0] != null) {
+						n = n.below[0];
+						continue;
+					} else { // at bottom level
+						n.payload[PRICE_POS + ORDER_LEN] = n.payload[PRICE_POS];
+						n.payload[QUANT_POS + ORDER_LEN] = n.payload[QUANT_POS];
+						n.payload[IDENT_POS + ORDER_LEN] = n.payload[IDENT_POS];
+						n.payload[PRICE_POS] = price;
+						n.payload[QUANT_POS] = quant;
+						n.payload[IDENT_POS] = ident;
+						n.size = 2;
+					}
+				}
+				return;
+			}
+			assert(n.size == 2);
 
-		if (size == 1) {
-			if (price >= payload[PRICE_POS]) {
-				if (below[1] != null) {
-					below[1].placeOrder(price, quant, ident);
+			if (price >= n.payload[PRICE_POS + ORDER_LEN]) {
+				if (n.below[2] != null) {
+					n = n.below[2];
+					continue;
 				} else { // at bottom level
-					payload[PRICE_POS + ORDER_LEN] = price;
-					payload[QUANT_POS + ORDER_LEN] = quant;
-					payload[IDENT_POS + ORDER_LEN] = ident;
-					size = 2;
+					BuyNode right = BuyNode.newInstance(price, quant, ident);
+					n.size = 1;
+					n.pushUp(n.payload[PRICE_POS + ORDER_LEN],
+						n.payload[QUANT_POS + ORDER_LEN],
+						n.payload[IDENT_POS + ORDER_LEN],
+						right);
+				}
+			} else if (price >= n.payload[PRICE_POS]) {
+				if (n.below[1] != null) {
+					n = n.below[1];
+					continue;
+				} else { // at bottom level
+					BuyNode right = BuyNode.newInstance(
+						n.payload[PRICE_POS + ORDER_LEN],
+						n.payload[QUANT_POS + ORDER_LEN],
+						n.payload[IDENT_POS + ORDER_LEN]);
+					n.size = 1;
+					n.pushUp(price, quant, ident, right);
 				}
 			} else {
-				if (below[0] != null) {
-					below[0].placeOrder(price, quant, ident);
+				assert(price < n.payload[PRICE_POS]);
+				if (n.below[0] != null) {
+					n = n.below[0];
+					continue;
 				} else { // at bottom level
-					payload[PRICE_POS + ORDER_LEN] = payload[PRICE_POS];
-					payload[QUANT_POS + ORDER_LEN] = payload[QUANT_POS];
-					payload[IDENT_POS + ORDER_LEN] = payload[IDENT_POS];
-					payload[PRICE_POS] = price;
-					payload[QUANT_POS] = quant;
-					payload[IDENT_POS] = ident;
-					size = 2;
+					BuyNode right = BuyNode.newInstance(
+						n.payload[PRICE_POS + ORDER_LEN],
+						n.payload[QUANT_POS + ORDER_LEN],
+						n.payload[IDENT_POS + ORDER_LEN]);
+					n.size = 1;
+					n.pushUp(n.payload[PRICE_POS],
+						n.payload[QUANT_POS],
+						n.payload[IDENT_POS],
+						right);
+					n.payload[PRICE_POS] = price;
+					n.payload[QUANT_POS] = quant;
+					n.payload[IDENT_POS] = ident;
 				}
 			}
-
 			return;
-		}
-		assert(size == 2);
-
-		if (price >= payload[PRICE_POS + ORDER_LEN]) {
-			if (below[2] != null) {
-				below[2].placeOrder(price, quant, ident);
-			} else { // at bottom level
-				BuyNode right = BuyNode.newInstance(price, quant, ident);
-				this.size = 1;
-				pushUp(payload[PRICE_POS + ORDER_LEN],
-					payload[QUANT_POS + ORDER_LEN],
-					payload[IDENT_POS + ORDER_LEN],
-					right);
-			}
-		} else if (price >= payload[PRICE_POS]) {
-			if (below[1] != null) {
-				below[1].placeOrder(price, quant, ident);
-			} else { // at bottom level
-				BuyNode right = BuyNode.newInstance(
-					payload[PRICE_POS + ORDER_LEN],
-					payload[QUANT_POS + ORDER_LEN],
-					payload[IDENT_POS + ORDER_LEN]);
-				this.size = 1;
-				pushUp(price, quant, ident, right);
-			}
-		} else {
-			assert(price < payload[PRICE_POS]);
-			if (below[0] != null) {
-				below[0].placeOrder(price, quant, ident);
-			} else { // at bottom level
-				BuyNode right = BuyNode.newInstance(
-					payload[PRICE_POS + ORDER_LEN],
-					payload[QUANT_POS + ORDER_LEN],
-					payload[IDENT_POS + ORDER_LEN]);
-				this.size = 1;
-				pushUp(payload[PRICE_POS],
-					payload[QUANT_POS],
-					payload[IDENT_POS],
-					right);
-				payload[PRICE_POS] = price;
-				payload[QUANT_POS] = quant;
-				payload[IDENT_POS] = ident;
-			}
 		}
 	}
 

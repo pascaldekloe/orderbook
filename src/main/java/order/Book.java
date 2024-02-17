@@ -104,7 +104,7 @@ public final class Book {
 		if (buyTree == null) {
 			buyTree = BuyNode.newInstance(price, quant, ident);
 		} else {
-			buyTree.placeOrder(price, quant, ident);
+			BuyNode.placeOrder(buyTree, price, quant, ident);
 			// mount top; could if [do once] instead
 			while (buyTree.above != null)
 				buyTree = buyTree.above;
