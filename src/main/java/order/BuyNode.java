@@ -89,11 +89,25 @@ final class BuyNode {
 	/**
 	 * Insert without presence/duplicate check, sorted by price in ascending
 	 * order, and then by insertion order.
-	 * @param price order limit.
-	 * @param quant order volume.
-	 * @param ident order reference.
+	 * @param treeOrNull the top node or {@code null} when empty.
+	 * @param price the order limit.
+	 * @param quant the order volume.
+	 * @param ident the order reference.
+	 * @return the new top node.
 	 */
-	public static void placeOrder(BuyNode n, long price, long quant, long ident) {
+	static BuyNode placeOrderInTreeOrNull(BuyNode treeOrNull, long price, long quant, long ident) {
+		if (treeOrNull == null)
+			return BuyNode.newInstance(price, quant, ident);
+
+		BuyNode top = treeOrNull;
+		BuyNode.placeOrder(top, price, quant, ident);
+		if (top.above != null)
+			top = top.above;
+		return top;
+	}
+
+	/** @see #placeOrderInTree */
+	private static void placeOrder(BuyNode n, long price, long quant, long ident) {
 		while (true) {
 			if (n.size == 1) {
 				if (price >= n.payload[PRICE_POS]) {
@@ -178,15 +192,16 @@ final class BuyNode {
 	 * @param right the new node to place (right of {@code this}).
 	 */
 	private void pushUp(long price, long quant, long ident, BuyNode right) {
-		if (this.above == null) {
-			BuyNode top = BuyNode.newInstance(price, quant, ident);
-			top.below[0] = this;
-			top.below[1] = right;
-			this.above = top;
-			right.above = top;
-		} else {
+		if (this.above != null) {
 			this.above.push(price, quant, ident, this, right);
+			return;
 		}
+
+		BuyNode top = BuyNode.newInstance(price, quant, ident);
+		top.below[0] = this;
+		top.below[1] = right;
+		this.above = top;
+		right.above = top;
 	}
 
 	/**
@@ -224,7 +239,6 @@ final class BuyNode {
 				// (L) (B)      (L) (R) (B)
 
 				below[2] = below[1];
-				below[2].above = this;
 				below[1] = right;
 				below[1].above = this;
 				payload[PRICE_POS + ORDER_LEN] = payload[PRICE_POS];
@@ -258,6 +272,7 @@ final class BuyNode {
 				payload[QUANT_POS + ORDER_LEN],
 				payload[IDENT_POS + ORDER_LEN],
 				split);
+
 			return;
 		}
 

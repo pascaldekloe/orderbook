@@ -9,6 +9,8 @@ import java.util.List;
 
 import sun.misc.Unsafe;
 
+import static order.BuyNode.placeOrderInTreeOrNull;
+
 
 /**
  * Book keeps an overview of limit orders.
@@ -101,15 +103,7 @@ public final class Book {
 	}
 
 	private void placeBuy(long price, long quant, long ident) {
-		if (buyTree == null) {
-			buyTree = BuyNode.newInstance(price, quant, ident);
-		} else {
-			BuyNode.placeOrder(buyTree, price, quant, ident);
-			// mount top; could if [do once] instead
-			while (buyTree.above != null)
-				buyTree = buyTree.above;
-		}
-
+		buyTree = placeOrderInTreeOrNull(buyTree, price, quant, ident);
 		buyPlaceCount++; // metric
 	}
 
