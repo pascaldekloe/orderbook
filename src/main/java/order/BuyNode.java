@@ -37,24 +37,14 @@ final class BuyNode {
 	 */
 	int size;
 
-	/**
-	 * Payload embeds the {@link #size} count of orders in sequetial memory
-	 * as [ price quantity order_ID ] tuples to offload garbage collection.
-	 * TODO: Do 6 long fields save memory (without Java's array header)?
-	 */
-        final long[] payload = new long[2 * ORDER_LEN];
-
-	// field indices in payload array
-	private static final int PRICE_POS = 0;
-	private static final int QUANT_POS = 1;
-	private static final int IDENT_POS = 2;
-	private static final int ORDER_LEN = 3; // number of fields
+	/** Embed up to 2 orders to offload Java's garbage collection .*/
+	private long price0, price1, quant0, quant1, ident0, ident1;
 
 	static BuyNode newInstance(long price, long quant, long ident) {
 		BuyNode n = new BuyNode();
-		n.payload[PRICE_POS] = price;
-		n.payload[QUANT_POS] = quant;
-		n.payload[IDENT_POS] = ident;
+		n.price0 = price;
+		n.quant0 = quant;
+		n.ident0 = ident;
 		n.size = 1;
 		return n;
 	}
@@ -75,11 +65,10 @@ final class BuyNode {
 		switch (size) {
 		case 1:
 			return String.format("@%d/%d:[ %d %d %d ]", level, levelMax,
-				payload[PRICE_POS], payload[QUANT_POS], payload[IDENT_POS]);
+				price0, quant0, ident0);
 		case 2:
 			return String.format("@%d/%d:[ %d %d %d ][ %d %d %d ]", level, levelMax,
-				payload[PRICE_POS + 0*ORDER_LEN], payload[QUANT_POS + 0*ORDER_LEN], payload[IDENT_POS + 0*ORDER_LEN],
-				payload[PRICE_POS + 1*ORDER_LEN], payload[QUANT_POS + 1*ORDER_LEN], payload[IDENT_POS + 1*ORDER_LEN]);
+				price0, quant0, ident0, price1, quant1, ident1);
 		default:
 			return String.format("@%d/%d:<size %d ☠>", level, levelMax, size);
 		}
@@ -109,14 +98,14 @@ final class BuyNode {
 	private static void placeOrder(BuyNode n, long price, long quant, long ident) {
 		while (true) {
 			if (n.size == 1) {
-				if (price >= n.payload[PRICE_POS]) {
+				if (price >= n.price0) {
 					if (n.below1 != null) {
 						n = n.below1;
 						continue;
 					} else { // at bottom level
-						n.payload[PRICE_POS + ORDER_LEN] = price;
-						n.payload[QUANT_POS + ORDER_LEN] = quant;
-						n.payload[IDENT_POS + ORDER_LEN] = ident;
+						n.price1 = price;
+						n.quant1 = quant;
+						n.ident1 = ident;
 						n.size = 2;
 					}
 				} else {
@@ -124,12 +113,12 @@ final class BuyNode {
 						n = n.below0;
 						continue;
 					} else { // at bottom level
-						n.payload[PRICE_POS + ORDER_LEN] = n.payload[PRICE_POS];
-						n.payload[QUANT_POS + ORDER_LEN] = n.payload[QUANT_POS];
-						n.payload[IDENT_POS + ORDER_LEN] = n.payload[IDENT_POS];
-						n.payload[PRICE_POS] = price;
-						n.payload[QUANT_POS] = quant;
-						n.payload[IDENT_POS] = ident;
+						n.price1 = n.price0;
+						n.quant1 = n.quant0;
+						n.ident1 = n.ident0;
+						n.price0 = price;
+						n.quant0 = quant;
+						n.ident0 = ident;
 						n.size = 2;
 					}
 				}
@@ -137,48 +126,36 @@ final class BuyNode {
 			}
 			assert(n.size == 2);
 
-			if (price >= n.payload[PRICE_POS + ORDER_LEN]) {
+			if (price >= n.price1) {
 				if (n.below2 != null) {
 					n = n.below2;
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(price, quant, ident);
 					n.size = 1;
-					n.pushUp(n.payload[PRICE_POS + ORDER_LEN],
-						n.payload[QUANT_POS + ORDER_LEN],
-						n.payload[IDENT_POS + ORDER_LEN],
-						right);
+					n.pushUp(n.price1, n.quant1, n.ident1, right);
 				}
-			} else if (price >= n.payload[PRICE_POS]) {
+			} else if (price >= n.price0) {
 				if (n.below1 != null) {
 					n = n.below1;
 					continue;
 				} else { // at bottom level
-					BuyNode right = BuyNode.newInstance(
-						n.payload[PRICE_POS + ORDER_LEN],
-						n.payload[QUANT_POS + ORDER_LEN],
-						n.payload[IDENT_POS + ORDER_LEN]);
+					BuyNode right = BuyNode.newInstance(n.price1, n.quant1, n.ident1);
 					n.size = 1;
 					n.pushUp(price, quant, ident, right);
 				}
 			} else {
-				assert(price < n.payload[PRICE_POS]);
+				assert(price < n.price0);
 				if (n.below0 != null) {
 					n = n.below0;
 					continue;
 				} else { // at bottom level
-					BuyNode right = BuyNode.newInstance(
-						n.payload[PRICE_POS + ORDER_LEN],
-						n.payload[QUANT_POS + ORDER_LEN],
-						n.payload[IDENT_POS + ORDER_LEN]);
+					BuyNode right = BuyNode.newInstance(n.price1, n.quant1, n.ident1);
 					n.size = 1;
-					n.pushUp(n.payload[PRICE_POS],
-						n.payload[QUANT_POS],
-						n.payload[IDENT_POS],
-						right);
-					n.payload[PRICE_POS] = price;
-					n.payload[QUANT_POS] = quant;
-					n.payload[IDENT_POS] = ident;
+					n.pushUp(n.price0, n.quant0, n.ident0, right);
+					n.price0 = price;
+					n.quant0 = quant;
+					n.ident0 = ident;
 				}
 			}
 			return;
@@ -226,9 +203,9 @@ final class BuyNode {
 
 				below2 = right;
 				below2.above = this;
-				payload[PRICE_POS + ORDER_LEN] = price;
-				payload[QUANT_POS + ORDER_LEN] = quant;
-				payload[IDENT_POS + ORDER_LEN] = ident;
+				price1 = price;
+				quant1 = quant;
+				ident1 = ident;
 			} else {
 				assert(left == below0);
 				// push (L)eft, (R)ight and new (C)enter:
@@ -240,12 +217,12 @@ final class BuyNode {
 				below2 = below1;
 				below1 = right;
 				below1.above = this;
-				payload[PRICE_POS + ORDER_LEN] = payload[PRICE_POS];
-				payload[QUANT_POS + ORDER_LEN] = payload[QUANT_POS];
-				payload[IDENT_POS + ORDER_LEN] = payload[IDENT_POS];
-				payload[PRICE_POS] = price;
-				payload[QUANT_POS] = quant;
-				payload[IDENT_POS] = ident;
+				price1 = price0;
+				quant1 = quant0;
+				ident1 = ident0;
+				price0 = price;
+				quant0 = quant;
+				ident0 = ident;
 			}
 
 			return;
@@ -267,18 +244,11 @@ final class BuyNode {
 			split.below1.above = split;
 			size = 1;
 			below2 = null; // free (L); in split now
-			pushUp(payload[PRICE_POS + ORDER_LEN],
-				payload[QUANT_POS + ORDER_LEN],
-				payload[IDENT_POS + ORDER_LEN],
-				split);
-
+			pushUp(price1, quant1, ident1, split);
 			return;
 		}
 
-		BuyNode split = BuyNode.newInstance(
-			payload[PRICE_POS + ORDER_LEN],
-			payload[QUANT_POS + ORDER_LEN],
-			payload[IDENT_POS + ORDER_LEN]);
+		BuyNode split = BuyNode.newInstance(price1, quant1, ident1);
 		if (left == below1) {
 			// push (L)eft, (R)ight and new (C)enter:
 			//                               (C)
@@ -307,13 +277,10 @@ final class BuyNode {
 			below2 = null; // free (B2); in split now
 			below1 = right;
 			below1.above = this;
-			pushUp(payload[PRICE_POS],
-				payload[QUANT_POS],
-				payload[IDENT_POS],
-				split);
-			payload[PRICE_POS] = price;
-			payload[QUANT_POS] = quant;
-			payload[IDENT_POS] = ident;
+			pushUp(price0, quant0, ident0, split);
+			price0 = price;
+			quant0 = quant;
+			ident0 = ident;
 		}
 	}
 
