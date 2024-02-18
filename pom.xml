@@ -47,9 +47,22 @@
 	<artifactId>maven-surefire-plugin</artifactId>
 	<version>3.2.5</version>
 	<configuration>
-		<!-- Disabled for the benchmarks. Benchmarks need a
-		     separate module in later stage of development. -->
-		<enableAssertions>false</enableAssertions>
+		<enableAssertions>true</enableAssertions>
+	</configuration>
+</plugin>
+<plugin>
+	<groupId>org.codehaus.mojo</groupId>
+	<artifactId>exec-maven-plugin</artifactId>
+	<version>3.1.1</version>
+	<executions>
+	<execution>
+		<phase>verify</phase>
+		<goals><goal>java</goal></goals>
+	</execution>
+	</executions>
+	<configuration>
+		<executable>benchmark</executable>
+		<mainClass>order.BookBench</mainClass>
 	</configuration>
 </plugin>
 </plugins>
