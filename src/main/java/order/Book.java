@@ -136,7 +136,7 @@ public final class Book {
 				b.append(node.below0.toString()).append('\n');
 				nextRow.add(node.below1);
 				b.append(node.below1.toString()).append('\n');
-				if (node.size > 1) {
+				if (node.full) {
 					nextRow.add(node.below2);
 					b.append(node.below2.toString()).append('\n');
 				}

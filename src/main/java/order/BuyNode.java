@@ -25,17 +25,16 @@ final class BuyNode {
 	BuyNode above;
 
 	/**
-	 * Only the first {@link #size} + 1 nodes are in use. The bottom row of
-	 * nodes in a B-Tree all have {@code null} values exclusively, and vise
-	 * versa.
+	 * The bottom row of nodes in a B-Tree all have {@code null} values
+	 * exclusively, and vise versa. Below2 applies only when {@link #full}.
 	 */
 	BuyNode below0, below1, below2;
 
 	/**
-	 * The actual number of orders in a BuyNode is either 1 or 2.
+	 * The number of orders in a BuyNode is either 1 or 2.
 	 * Larger nodes split up in two, and the empty ones resolve.
 	 */
-	int size;
+	boolean full;
 
 	/** Embed up to 2 orders to offload Java's garbage collection .*/
 	private long price0, price1, quant0, quant1, ident0, ident1;
@@ -45,7 +44,6 @@ final class BuyNode {
 		n.price0 = price;
 		n.quant0 = quant;
 		n.ident0 = ident;
-		n.size = 1;
 		return n;
 	}
 
@@ -62,16 +60,11 @@ final class BuyNode {
 		for (BuyNode n = above; n != null; n = n.above)
 			levelMax++;
 
-		switch (size) {
-		case 1:
+		if (!full)
 			return String.format("@%d/%d:[ %d %d %d ]", level, levelMax,
 				price0, quant0, ident0);
-		case 2:
-			return String.format("@%d/%d:[ %d %d %d ][ %d %d %d ]", level, levelMax,
-				price0, quant0, ident0, price1, quant1, ident1);
-		default:
-			return String.format("@%d/%d:<size %d ☠>", level, levelMax, size);
-		}
+		return String.format("@%d/%d:[ %d %d %d ][ %d %d %d ]", level, levelMax,
+			price0, quant0, ident0, price1, quant1, ident1);
 	}
 
 	/**
@@ -97,7 +90,7 @@ final class BuyNode {
 	/** @see #placeOrderInTree */
 	private static void placeOrder(BuyNode n, long price, long quant, long ident) {
 		while (true) {
-			if (n.size == 1) {
+			if (!n.full) {
 				if (price >= n.price0) {
 					if (n.below1 != null) {
 						n = n.below1;
@@ -106,7 +99,7 @@ final class BuyNode {
 						n.price1 = price;
 						n.quant1 = quant;
 						n.ident1 = ident;
-						n.size = 2;
+						n.full = true;
 					}
 				} else {
 					if (n.below0 != null) {
@@ -119,12 +112,11 @@ final class BuyNode {
 						n.price0 = price;
 						n.quant0 = quant;
 						n.ident0 = ident;
-						n.size = 2;
+						n.full = true;
 					}
 				}
 				return;
 			}
-			assert(n.size == 2);
 
 			if (price >= n.price1) {
 				if (n.below2 != null) {
@@ -132,7 +124,7 @@ final class BuyNode {
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(price, quant, ident);
-					n.size = 1;
+					n.full = false;
 					n.pushUp(n.price1, n.quant1, n.ident1, right);
 				}
 			} else if (price >= n.price0) {
@@ -141,7 +133,7 @@ final class BuyNode {
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(n.price1, n.quant1, n.ident1);
-					n.size = 1;
+					n.full = false;
 					n.pushUp(price, quant, ident, right);
 				}
 			} else {
@@ -151,7 +143,7 @@ final class BuyNode {
 					continue;
 				} else { // at bottom level
 					BuyNode right = BuyNode.newInstance(n.price1, n.quant1, n.ident1);
-					n.size = 1;
+					n.full = false;
 					n.pushUp(n.price0, n.quant0, n.ident0, right);
 					n.price0 = price;
 					n.quant0 = quant;
@@ -187,12 +179,12 @@ final class BuyNode {
 	 * @param right the new node to place (right of {@code left}).
 	 */
 	private void push(long price, long quant, long ident, BuyNode left, BuyNode right) {
-		assert(left == below0 || left == below1 || (size > 1 && left == below2));
+		assert(left == below0 || left == below1 || (full && left == below2));
 		assert(right != below0 && right != below1 && right != below2);
 		assert(left.above == this);
 
-		if (size == 1) {
-			size = 2; // grow
+		if (!full) {
+			full = true; // grow
 
 			if (left == below1) {
 				// push (L)eft, (R)ight and new (C)enter:
@@ -227,9 +219,8 @@ final class BuyNode {
 
 			return;
 		}
-		assert(size == 2);
+		full = false; // split up
 
-		// split up
 		if (left == below2) {
 			// push (L)eft, (R)ight and new (C)enter:
 			//                               (A2)
@@ -242,7 +233,6 @@ final class BuyNode {
 			split.below0.above = split;
 			split.below1 = right;
 			split.below1.above = split;
-			size = 1;
 			below2 = null; // free (L); in split now
 			pushUp(price1, quant1, ident1, split);
 			return;
@@ -259,7 +249,6 @@ final class BuyNode {
 			split.below0.above = split;
 			split.below1 = below2;
 			split.below1.above = split;
-			size = 1;
 			below2 = null; // free (B2); in split now
 			pushUp(price, quant, ident, split);
 		} else {
@@ -273,7 +262,6 @@ final class BuyNode {
 			split.below0.above = split;
 			split.below1 = below2;
 			split.below1.above = split;
-			size = 1;
 			below2 = null; // free (B2); in split now
 			below1 = right;
 			below1.above = this;
